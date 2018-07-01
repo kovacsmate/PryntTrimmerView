@@ -266,7 +266,25 @@ public protocol TrimmerViewDelegate: class {
         let newConstraint = max(min(0, currentRightConstraint + translation.x), maxConstraint)
         rightConstraint?.constant = newConstraint
     }
+    
+    private func updateLeftConstraint(with time: CMTime) {
+        let maxConstraint = max(rightHandleView.frame.origin.x - handleWidth - minimumDistanceBetweenHandle, 0)
 
+        let newConstant = Double(durationSize) / CMTimeGetSeconds(asset!.duration) * CMTimeGetSeconds(time)
+        
+        let newConstraint = min(max(0, newConstant), Double(maxConstraint))
+        leftConstraint?.constant = CGFloat(newConstraint)
+        
+    }
+    
+    private func updateRightConstraint(with time: CMTime) {
+        let maxConstraint = min(2 * handleWidth - frame.width + leftHandleView.frame.origin.x + minimumDistanceBetweenHandle, 0)
+        
+        let newConstant = -1.0 * Double(durationSize) / CMTimeGetSeconds(asset!.duration) * CMTimeGetSeconds((asset?.duration ?? kCMTimeZero) - time)
+        let newConstraint = max(min(0, newConstant), Double(maxConstraint))
+        rightConstraint?.constant = CGFloat(newConstraint)
+    }
+    
     // MARK: - Asset loading
 
     override func assetDidChange(newAsset: AVAsset?) {
@@ -297,14 +315,32 @@ public protocol TrimmerViewDelegate: class {
 
     /// The selected start time for the current asset.
     public var startTime: CMTime? {
-        let startPosition = leftHandleView.frame.origin.x + assetPreview.contentOffset.x
-        return getTime(from: startPosition)
+        get {
+            let startPosition = leftHandleView.frame.origin.x + assetPreview.contentOffset.x
+            return getTime(from: startPosition)
+        }
+        set {
+            if let time = newValue
+            {
+                self.updateLeftConstraint(with: time)
+                updateSelectedTime(stoppedMoving: true)
+            }
+        }
     }
 
     /// The selected end time for the current asset.
     public var endTime: CMTime? {
-        let endPosition = rightHandleView.frame.origin.x + assetPreview.contentOffset.x - handleWidth
-        return getTime(from: endPosition)
+        get {
+            let endPosition = rightHandleView.frame.origin.x + assetPreview.contentOffset.x - handleWidth
+            return getTime(from: endPosition)
+        }
+        set {
+            if let time = newValue
+            {
+                self.updateRightConstraint(with: time)
+                updateSelectedTime(stoppedMoving: true)
+            }
+        }
     }
 
     private func updateSelectedTime(stoppedMoving: Bool) {
